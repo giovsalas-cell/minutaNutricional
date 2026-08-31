@@ -9,6 +9,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.minutanutricional.Usuario
+import com.example.minutanutricional.UsuarioRepository
 
 @Composable
 fun RegisterScreen(
@@ -19,6 +21,8 @@ fun RegisterScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var aceptaTerminos by remember { mutableStateOf(false) }
+    var mensajeError by remember { mutableStateOf("") }
+    var registroExitoso by remember { mutableStateOf(false) }
 
     val opcionesTipo = listOf("Estándar / Familiar", "Vegetariana", "Hipocalórica")
     var tipoSeleccionado by remember { mutableStateOf(opcionesTipo[0]) }
@@ -38,7 +42,10 @@ fun RegisterScreen(
 
         OutlinedTextField(
             value = nombre,
-            onValueChange = { nombre = it },
+            onValueChange = {
+                nombre = it
+                mensajeError = ""
+            },
             label = { Text("Nombre completo") },
             modifier = Modifier.fillMaxWidth()
         )
@@ -47,7 +54,10 @@ fun RegisterScreen(
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = {
+                email = it
+                mensajeError = ""
+            },
             label = { Text("Correo electrónico") },
             modifier = Modifier.fillMaxWidth()
         )
@@ -56,7 +66,10 @@ fun RegisterScreen(
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = {
+                password = it
+                mensajeError = ""
+            },
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
@@ -101,11 +114,48 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = { onRegisterSuccess() },
+            onClick = {
+                val nombreLimpio = nombre.trim()
+                val emailLimpio = email.trim()
+                val passwordLimpio = password.trim()
+
+                when {
+                    nombreLimpio.isBlank() || emailLimpio.isBlank() || passwordLimpio.isBlank() -> {
+                        mensajeError = "Todos los campos son obligatorios."
+                        registroExitoso = false
+                    }
+                    UsuarioRepository.existeUsuario(emailLimpio) -> {
+                        mensajeError = "Ya existe una cuenta registrada con este correo."
+                        registroExitoso = false
+                    }
+                    else -> {
+                        val nuevoUsuario = Usuario(
+                            nombre = nombreLimpio,
+                            email = emailLimpio,
+                            password = passwordLimpio,
+                            tipoMinuta = tipoSeleccionado
+                        )
+                        UsuarioRepository.registrarUsuario(nuevoUsuario)
+                        mensajeError = ""
+                        registroExitoso = true
+                        // Volvemos al Login para que inicie sesión con su cuenta recién creada
+                        onRegisterSuccess()
+                    }
+                }
+            },
             enabled = aceptaTerminos && email.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Registrarme")
+        }
+
+        if (mensajeError.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = mensajeError,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
 
         TextButton(onClick = onBackToLogin) {

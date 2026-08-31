@@ -6,11 +6,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.minutanutricional.UsuarioRepository
 
 @Composable
 fun ForgotPasswordScreen(onBackToLogin: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var mensajeEnviado by remember { mutableStateOf(false) }
+    var mensajeError by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -33,15 +35,31 @@ fun ForgotPasswordScreen(onBackToLogin: () -> Unit) {
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = {
+                email = it
+                mensajeError = ""
+                mensajeEnviado = false
+            },
             label = { Text("Correo electrónico") },
+            isError = mensajeError.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = { mensajeEnviado = true },
+            onClick = {
+                if (email.isBlank()) {
+                    mensajeError = "Ingresa un correo electrónico."
+                    mensajeEnviado = false
+                } else if (UsuarioRepository.existeUsuario(email)) {
+                    mensajeEnviado = true
+                    mensajeError = ""
+                } else {
+                    mensajeEnviado = false
+                    mensajeError = "No existe ninguna cuenta registrada con ese correo."
+                }
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Enviar Instrucciones")
@@ -52,6 +70,14 @@ fun ForgotPasswordScreen(onBackToLogin: () -> Unit) {
             Text(
                 text = "Se han enviado las instrucciones a tu correo.",
                 color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        if (mensajeError.isNotBlank()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = mensajeError,
+                color = MaterialTheme.colorScheme.error
             )
         }
 

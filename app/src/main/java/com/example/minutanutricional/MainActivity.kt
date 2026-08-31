@@ -14,23 +14,31 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             var currentScreen by remember { mutableStateOf(Screen.LOGIN) }
+            var usuarioActual by remember { mutableStateOf<Usuario?>(null) }
 
             MinutaNutricionalTheme {
                 when (currentScreen) {
                     Screen.LOGIN -> LoginScreen(
-                        onLoginSuccess = { currentScreen = Screen.MINUTA },
+                        onLoginSuccess = { usuario ->
+                            usuarioActual = usuario
+                            currentScreen = Screen.MINUTA
+                        },
                         onNavigateToRegister = { currentScreen = Screen.REGISTER },
                         onNavigateToForgotPassword = { currentScreen = Screen.FORGOT_PASSWORD }
                     )
                     Screen.REGISTER -> RegisterScreen(
-                        onRegisterSuccess = { currentScreen = Screen.MINUTA },
+                        onRegisterSuccess = { currentScreen = Screen.LOGIN },
                         onBackToLogin = { currentScreen = Screen.LOGIN }
                     )
                     Screen.FORGOT_PASSWORD -> ForgotPasswordScreen(
                         onBackToLogin = { currentScreen = Screen.LOGIN }
                     )
                     Screen.MINUTA -> MinutaScreen(
-                        onLogout = { currentScreen = Screen.LOGIN }
+                        usuarioActual = usuarioActual,
+                        onLogout = {
+                            usuarioActual = null
+                            currentScreen = Screen.LOGIN
+                        }
                     )
                 }
             }

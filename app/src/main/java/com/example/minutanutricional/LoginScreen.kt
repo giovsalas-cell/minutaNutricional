@@ -16,15 +16,18 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.minutanutricional.R
+import com.example.minutanutricional.Usuario
+import com.example.minutanutricional.UsuarioRepository
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: (Usuario) -> Unit,
     onNavigateToRegister: () -> Unit,
     onNavigateToForgotPassword: () -> Unit
 ) {
     var usuario by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var mensajeError by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -62,8 +65,12 @@ fun LoginScreen(
 
             OutlinedTextField(
                 value = usuario,
-                onValueChange = { usuario = it },
+                onValueChange = {
+                    usuario = it
+                    mensajeError = ""
+                },
                 label = { Text("Correo electrónico o usuario") },
+                isError = mensajeError.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -72,9 +79,13 @@ fun LoginScreen(
 
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = {
+                    password = it
+                    mensajeError = ""
+                },
                 label = { Text("Contraseña") },
                 visualTransformation = PasswordVisualTransformation(),
+                isError = mensajeError.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -82,12 +93,36 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
-                onClick = { onLoginSuccess() },
+                onClick = {
+                    when {
+                        usuario.isBlank() || password.isBlank() -> {
+                            mensajeError = "Por favor ingresa tu correo y contraseña."
+                        }
+                        else -> {
+                            val usuarioValidado = UsuarioRepository.validarCredenciales(usuario.trim(), password.trim())
+                            if (usuarioValidado != null) {
+                                mensajeError = ""
+                                onLoginSuccess(usuarioValidado)
+                            } else {
+                                mensajeError = "Usuario o contraseña incorrectos."
+                            }
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)
             ) {
                 Text("Ingresar", fontSize = 18.sp)
+            }
+
+            if (mensajeError.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = mensajeError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
