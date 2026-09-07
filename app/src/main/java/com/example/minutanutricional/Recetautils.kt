@@ -65,3 +65,27 @@ fun nivelDeVariedad(cantidadIngredientesUnicos: Int): String {
         else -> "Variedad baja"
     }
 }
+
+/**
+ * NUEVO: filtra las recetas que son apropiadas para un tipo de minuta
+ * específico (Estándar / Familiar, Vegetariana, Hipocalórica), usando
+ * el campo Receta.aptaPara y la función de colección filter/any.
+ *
+ * Esto aprovecha el dato tipoMinuta que ya se solicita en el Registro,
+ * personalizando la sugerencia semanal de acuerdo al perfil del usuario.
+ */
+fun recetasRecomendadasPara(tipoMinuta: String, recetas: List<Receta>): List<Receta> {
+    return recetas.filter { receta -> receta.aptaPara.any { it.equals(tipoMinuta, ignoreCase = true) } }
+}
+
+/**
+ * NUEVO: cuenta cuántas recetas de la semana son compatibles con cada
+ * tipo de minuta existente, útil para mostrar en el resumen semanal
+ * qué tan variada es la oferta para cada perfil.
+ */
+fun contarRecetasPorTipoMinuta(recetas: List<Receta>): Map<String, Int> {
+    return recetas
+        .flatMap { it.aptaPara }
+        .groupingBy { it }
+        .eachCount()
+}

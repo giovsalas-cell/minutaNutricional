@@ -11,6 +11,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.minutanutricional.Usuario
 import com.example.minutanutricional.UsuarioRepository
+import com.example.minutanutricional.Validaciones
 
 @Composable
 fun RegisterScreen(
@@ -22,10 +23,19 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     var aceptaTerminos by remember { mutableStateOf(false) }
     var mensajeError by remember { mutableStateOf("") }
-    var registroExitoso by remember { mutableStateOf(false) }
 
     val opcionesTipo = listOf("Estándar / Familiar", "Vegetariana", "Hipocalórica")
     var tipoSeleccionado by remember { mutableStateOf(opcionesTipo[0]) }
+
+    // Validaciones en vivo, reutilizadas tanto para mostrar ayuda como
+    // para habilitar/deshabilitar el botón de registro.
+    val emailFormatoValido = email.isBlank() || Validaciones.emailEsValido(email)
+    val passwordFormatoValido = password.isBlank() || Validaciones.passwordEsValida(password)
+
+    val formularioValido = nombre.isNotBlank() &&
+            Validaciones.emailEsValido(email) &&
+            Validaciones.passwordEsValida(password) &&
+            aceptaTerminos
 
     Column(
         modifier = Modifier
@@ -47,6 +57,7 @@ fun RegisterScreen(
                 mensajeError = ""
             },
             label = { Text("Nombre completo") },
+            isError = nombre.isEmpty() && mensajeError.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -59,6 +70,12 @@ fun RegisterScreen(
                 mensajeError = ""
             },
             label = { Text("Correo electrónico") },
+            isError = !emailFormatoValido,
+            supportingText = {
+                if (!emailFormatoValido) {
+                    Text(Validaciones.AYUDA_EMAIL)
+                }
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -72,6 +89,10 @@ fun RegisterScreen(
             },
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
+            isError = !passwordFormatoValido,
+            supportingText = {
+                Text(Validaciones.AYUDA_PASSWORD)
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -120,13 +141,20 @@ fun RegisterScreen(
                 val passwordLimpio = password.trim()
 
                 when {
-                    nombreLimpio.isBlank() || emailLimpio.isBlank() || passwordLimpio.isBlank() -> {
-                        mensajeError = "Todos los campos son obligatorios."
-                        registroExitoso = false
+                    nombreLimpio.isBlank() -> {
+                        mensajeError = "Ingresa tu nombre completo."
+                    }
+                    !Validaciones.emailEsValido(emailLimpio) -> {
+                        mensajeError = "El correo ingresado no tiene un formato válido."
+                    }
+                    !Validaciones.passwordEsValida(passwordLimpio) -> {
+                        mensajeError = "La contraseña no cumple los requisitos mínimos."
                     }
                     UsuarioRepository.existeUsuario(emailLimpio) -> {
                         mensajeError = "Ya existe una cuenta registrada con este correo."
-                        registroExitoso = false
+                    }
+                    !aceptaTerminos -> {
+                        mensajeError = "Debes aceptar los términos y condiciones."
                     }
                     else -> {
                         val nuevoUsuario = Usuario(
@@ -137,13 +165,12 @@ fun RegisterScreen(
                         )
                         UsuarioRepository.registrarUsuario(nuevoUsuario)
                         mensajeError = ""
-                        registroExitoso = true
                         // Volvemos al Login para que inicie sesión con su cuenta recién creada
                         onRegisterSuccess()
                     }
                 }
             },
-            enabled = aceptaTerminos && email.isNotBlank(),
+            enabled = formularioValido,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Registrarme")

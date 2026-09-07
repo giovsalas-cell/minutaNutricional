@@ -69,7 +69,7 @@ fun LoginScreen(
                     usuario = it
                     mensajeError = ""
                 },
-                label = { Text("Correo electrónico o usuario") },
+                label = { Text("Correo electrónico ") },
                 isError = mensajeError.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
