@@ -1,25 +1,33 @@
-package com.example.minutanutricional.ui
+package com.example.minutanutricional
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.example.minutanutricional.UsuarioRepository
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ForgotPasswordScreen(onBackToLogin: () -> Unit) {
+fun ForgotPasswordScreen(
+    onBackToLogin: () -> Unit,
+    onCodigoGenerado: (String) -> Unit
+) {
+    val context = LocalContext.current
+
     var email by remember { mutableStateOf("") }
-    var mensajeEnviado by remember { mutableStateOf(false) }
+    var nuevaPassword by remember { mutableStateOf("") }
     var mensajeError by remember { mutableStateOf("") }
+    var mensajeExito by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Recuperar Contraseña",
@@ -27,64 +35,77 @@ fun ForgotPasswordScreen(onBackToLogin: () -> Unit) {
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        Text(
-            text = "Ingresa tu correo registrado para enviarte un enlace de recuperación.",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
-
         OutlinedTextField(
             value = email,
-            onValueChange = {
-                email = it
-                mensajeError = ""
-                mensajeEnviado = false
-            },
+            onValueChange = { email = it },
             label = { Text("Correo electrónico") },
-            isError = mensajeError.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        Button(
-            onClick = {
-                if (email.isBlank()) {
-                    mensajeError = "Ingresa un correo electrónico."
-                    mensajeEnviado = false
-                } else if (UsuarioRepository.existeUsuario(email)) {
-                    mensajeEnviado = true
-                    mensajeError = ""
-                } else {
-                    mensajeEnviado = false
-                    mensajeError = "No existe ninguna cuenta registrada con ese correo."
-                }
-            },
+        OutlinedTextField(
+            value = nuevaPassword,
+            onValueChange = { nuevaPassword = it },
+            label = { Text("Nueva contraseña") },
+            visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Enviar Instrucciones")
-        }
+        )
 
-        if (mensajeEnviado) {
-            Spacer(modifier = Modifier.height(16.dp))
+        if (mensajeError.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Se han enviado las instrucciones a tu correo.",
-                color = MaterialTheme.colorScheme.primary
+                text = mensajeError,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium
             )
         }
 
-        if (mensajeError.isNotBlank()) {
-            Spacer(modifier = Modifier.height(16.dp))
+        if (mensajeExito.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = mensajeError,
-                color = MaterialTheme.colorScheme.error
+                text = mensajeExito,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodyMedium
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        Button(
+            onClick = {
+                if (email.isBlank() || nuevaPassword.isBlank()) {
+                    mensajeError = "Por favor completa todos los campos."
+                    mensajeExito = ""
+                    return@Button
+                }
+
+                val existe = UsuarioRepository.existeUsuario(context, email)
+
+                if (existe) {
+                    val actualizado = UsuarioRepository.actualizarPassword(context, email, nuevaPassword)
+                    if (actualizado) {
+                        mensajeError = ""
+                        mensajeExito = "¡Contraseña actualizada con éxito!"
+                        onCodigoGenerado(email.trim())
+                    } else {
+                        mensajeError = "No se pudo actualizar la contraseña."
+                        mensajeExito = ""
+                    }
+                } else {
+                    mensajeError = "El correo ingresado no está registrado."
+                    mensajeExito = ""
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Actualizar Contraseña")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         TextButton(onClick = onBackToLogin) {
-            Text("Volver al Inicio de Sesión")
+            Text("Volver al Login")
         }
     }
 }

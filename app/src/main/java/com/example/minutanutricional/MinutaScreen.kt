@@ -14,10 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 
-// Ancho a partir del cual consideramos que el dispositivo tiene espacio
-// suficiente para mostrar las recetas en grilla (tablets, celulares en
-// horizontal, plegables, etc.). Por debajo de este umbral se mantiene
-// la lista vertical, más cómoda de leer en pantallas angostas.
 private val ANCHO_MINIMO_PARA_GRILLA = 600.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,27 +23,23 @@ fun MinutaScreen(
     usuarioActual: Usuario? = null,
     recetas: List<Receta> = RecetasRepository.recetasSemanales
 ) {
-    // Lista de días para el combo box, incluyendo la opción "Todos"
     val dias = listOf("Todos") + recetas.map { it.dia }.distinct()
     var diaSeleccionado by remember { mutableStateOf(dias.first()) }
     var expandidoDia by remember { mutableStateOf(false) }
 
-    // Combo box para filtrar/personalizar según el tipo de minuta.
-    // Se preselecciona automáticamente el tipo declarado por el usuario
-    // en el Registro, aprovechando ese dato que antes no se utilizaba.
     val tiposMinuta = listOf("Todas") + recetas.flatMap { it.aptaPara }.distinct()
     var tipoSeleccionado by remember {
         mutableStateOf(usuarioActual?.tipoMinuta?.takeIf { tiposMinuta.contains(it) } ?: "Todas")
     }
     var expandidoTipo by remember { mutableStateOf(false) }
 
-    // Filtra la lista según el día y el tipo de minuta elegidos
     val recetasFiltradas = recetas
         .let { lista -> if (diaSeleccionado == "Todos") lista else lista.filter { it.dia.equals(diaSeleccionado, ignoreCase = true) } }
         .let { lista -> if (tipoSeleccionado == "Todas") lista else recetasRecomendadasPara(tipoSeleccionado, lista) }
 
-    // --- Datos del resumen semanal, calculados con funciones + colecciones ---
     val resumenPorDia = contarRecetasPorDia(recetas)
+    val resumenPorCategoria = agruparRecetasPorCategoria(recetas)
+
     val totalIng = totalIngredientes(recetas)
     val ingredientesDistintos = ingredientesUnicos(recetas)
     val recetaDestacada = recetaConMasIngredientes(recetas)
@@ -85,7 +77,6 @@ fun MinutaScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // --- Fila de filtros: día y tipo de minuta ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -155,7 +146,6 @@ fun MinutaScreen(
                 }
             }
 
-            // --- Tarjeta con la tabla/grilla de resumen semanal ---
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -169,7 +159,6 @@ fun MinutaScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    // --- Encabezado de la tabla ---
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = "Día",
@@ -189,7 +178,6 @@ fun MinutaScreen(
                         )
                     }
 
-                    // --- Filas de la tabla generadas con un bucle for sobre el mapa ---
                     for ((dia, cantidad) in resumenPorDia) {
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Text(
@@ -210,6 +198,16 @@ fun MinutaScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Recetas por categoría: " +
+                                resumenPorCategoria.entries.joinToString(", ") { (categoria, lista) ->
+                                    "$categoria (${lista.size})"
+                                },
+                        style = MaterialTheme.typography.bodySmall
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
                         text = "Total de ingredientes usados en la semana: $totalIng",
@@ -235,7 +233,6 @@ fun MinutaScreen(
                     modifier = Modifier.padding(vertical = 16.dp)
                 )
             } else if (anchoDisponible >= ANCHO_MINIMO_PARA_GRILLA) {
-                // --- Pantallas anchas (tablet, horizontal): grilla adaptativa ---
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 220.dp),
                     modifier = Modifier.weight(1f),
@@ -247,7 +244,6 @@ fun MinutaScreen(
                     }
                 }
             } else {
-                // --- Pantallas angostas (celular en vertical): lista ---
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -260,7 +256,6 @@ fun MinutaScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- Vínculo externo (link) a una guía de alimentación saludable ---
             TextButton(onClick = {
                 uriHandler.openUri("https://www.minsal.cl/guias-alimentarias/")
             }) {
@@ -276,10 +271,6 @@ fun MinutaScreen(
     }
 }
 
-/**
- * Tarjeta de receta reutilizada tanto en la lista (celular) como en la
- * grilla (tablet/horizontal), evitando duplicar el diseño en dos lugares.
- */
 @Composable
 private fun RecetaCard(receta: Receta) {
     Card(
