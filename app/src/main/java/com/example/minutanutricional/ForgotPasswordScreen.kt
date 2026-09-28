@@ -5,22 +5,29 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
+/**
+ * A diferencia de la versión anterior (que dejaba escribir una contraseña
+ * nueva directamente y la guardaba en SQLite), Firebase Authentication no
+ * permite cambiar la contraseña de un usuario sin que esté logueado o sin
+ * pasar por el enlace que Firebase manda al correo. Por eso esta pantalla
+ * ahora solo pide el correo y dispara el envío de ese enlace de
+ * recuperación oficial de Firebase.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ForgotPasswordScreen(
     onBackToLogin: () -> Unit,
     onCodigoGenerado: (String) -> Unit
 ) {
-    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var email by remember { mutableStateOf("") }
-    var nuevaPassword by remember { mutableStateOf("") }
     var mensajeError by remember { mutableStateOf("") }
     var mensajeExito by remember { mutableStateOf("") }
+    var cargando by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -35,20 +42,17 @@ fun ForgotPasswordScreen(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
+        Text(
+            text = "Te enviaremos un correo con un enlace para crear una nueva contraseña.",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Correo electrónico") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = nuevaPassword,
-            onValueChange = { nuevaPassword = it },
-            label = { Text("Nueva contraseña") },
-            visualTransformation = PasswordVisualTransformation(),
+            enabled = !cargando,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -74,37 +78,42 @@ fun ForgotPasswordScreen(
 
         Button(
             onClick = {
-                if (email.isBlank() || nuevaPassword.isBlank()) {
-                    mensajeError = "Por favor completa todos los campos."
+                if (email.isBlank()) {
+                    mensajeError = "Por favor ingresa tu correo electrónico."
                     mensajeExito = ""
                     return@Button
                 }
 
-                val existe = UsuarioRepository.existeUsuario(context, email)
+                cargando = true
+                mensajeError = ""
+                mensajeExito = ""
 
-                if (existe) {
-                    val actualizado = UsuarioRepository.actualizarPassword(context, email, nuevaPassword)
-                    if (actualizado) {
-                        mensajeError = ""
-                        mensajeExito = "¡Contraseña actualizada con éxito!"
-                        onCodigoGenerado(email.trim())
-                    } else {
-                        mensajeError = "No se pudo actualizar la contraseña."
-                        mensajeExito = ""
-                    }
-                } else {
-                    mensajeError = "El correo ingresado no está registrado."
-                    mensajeExito = ""
+                scope.launch {
+                    val resultado = FirebaseUsuarioRepository.enviarCorreoDeRecuperacion(email)
+                    cargando = false
+                    resultado
+                        .onSuccess {
+                            mensajeExito = "Te enviamos un correo a ${email.trim()} con instrucciones para recuperar tu contraseña."
+                            onCodigoGenerado(email.trim())
+                        }
+                        .onFailure { error ->
+                            mensajeError = mapearErrorFirebase(error)
+                        }
                 }
             },
+            enabled = !cargando,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Actualizar Contraseña")
+            if (cargando) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+            } else {
+                Text("Enviar correo de recuperación")
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        TextButton(onClick = onBackToLogin) {
+        TextButton(onClick = onBackToLogin, enabled = !cargando) {
             Text("Volver al Login")
         }
     }

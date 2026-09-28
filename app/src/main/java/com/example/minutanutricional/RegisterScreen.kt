@@ -5,9 +5,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -15,13 +15,14 @@ fun RegistroScreen(
     onRegisterSuccess: () -> Unit,
     onBackToLogin: () -> Unit
 ) {
-    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var nombre by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var tipoMinuta by remember { mutableStateOf("Estándar / Familiar") }
     var mensajeError by remember { mutableStateOf("") }
+    var cargando by remember { mutableStateOf(false) }
 
     var expandidoTipo by remember { mutableStateOf(false) }
     val tiposDisponibles = listOf("Estándar / Familiar", "Vegetariana", "Hipocalórica")
@@ -43,6 +44,7 @@ fun RegistroScreen(
             value = nombre,
             onValueChange = { nombre = it },
             label = { Text("Nombre completo") },
+            enabled = !cargando,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -52,6 +54,7 @@ fun RegistroScreen(
             value = email,
             onValueChange = { email = it },
             label = { Text("Correo electrónico") },
+            enabled = !cargando,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -62,6 +65,8 @@ fun RegistroScreen(
             onValueChange = { password = it },
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
+            enabled = !cargando,
+            supportingText = { Text(Validaciones.AYUDA_PASSWORD) },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -69,13 +74,14 @@ fun RegistroScreen(
 
         ExposedDropdownMenuBox(
             expanded = expandidoTipo,
-            onExpandedChange = { expandidoTipo = !expandidoTipo },
+            onExpandedChange = { if (!cargando) expandidoTipo = !expandidoTipo },
             modifier = Modifier.fillMaxWidth()
         ) {
             OutlinedTextField(
                 value = tipoMinuta,
                 onValueChange = {},
                 readOnly = true,
+                enabled = !cargando,
                 label = { Text("Tipo de minuta preferido") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandidoTipo) },
                 modifier = Modifier
@@ -115,30 +121,44 @@ fun RegistroScreen(
                     mensajeError = "Por favor completa todos los campos."
                     return@Button
                 }
+                if (!Validaciones.emailEsValido(email)) {
+                    mensajeError = Validaciones.AYUDA_EMAIL
+                    return@Button
+                }
+                if (!Validaciones.passwordEsValida(password)) {
+                    mensajeError = Validaciones.AYUDA_PASSWORD
+                    return@Button
+                }
 
-                val nuevoUsuario = Usuario(
-                    nombre = nombre.trim(),
-                    email = email.trim(),
-                    password = password.trim(),
-                    tipoMinuta = tipoMinuta
-                )
+                cargando = true
+                mensajeError = ""
 
-                val registradoExitosamente = UsuarioRepository.registrarUsuario(context, nuevoUsuario)
-
-                if (registradoExitosamente) {
-                    onRegisterSuccess()
-                } else {
-                    mensajeError = "El correo ya se encuentra registrado."
+                scope.launch {
+                    val resultado = FirebaseUsuarioRepository.registrarUsuario(
+                        nombre = nombre.trim(),
+                        email = email,
+                        password = password,
+                        tipoMinuta = tipoMinuta
+                    )
+                    cargando = false
+                    resultado
+                        .onSuccess { onRegisterSuccess() }
+                        .onFailure { error -> mensajeError = mapearErrorFirebase(error) }
                 }
             },
+            enabled = !cargando,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Registrarse")
+            if (cargando) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+            } else {
+                Text("Registrarse")
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        TextButton(onClick = onBackToLogin) {
+        TextButton(onClick = onBackToLogin, enabled = !cargando) {
             Text("¿Ya tienes cuenta? Inicia sesión")
         }
     }

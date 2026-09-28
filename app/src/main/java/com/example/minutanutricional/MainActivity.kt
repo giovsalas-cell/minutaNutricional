@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
                         composable(Rutas.FORGOT_PASSWORD) {
                             ForgotPasswordScreen(
                                 onBackToLogin = { navController.popBackStack() },
-                                onCodigoGenerado = { email -> navController.popBackStack() }
+                                onCodigoGenerado = { email -> }
                             )
                         }
 
@@ -66,7 +66,16 @@ class MainActivity : ComponentActivity() {
                                     navController.navigate(Rutas.LOGIN) {
                                         popUpTo(0) { inclusive = true }
                                     }
+                                },
+                                onBuscarReceta = {
+                                    navController.navigate(Rutas.BUSCAR_RECETA)
                                 }
+                            )
+                        }
+
+                        composable(Rutas.BUSCAR_RECETA) {
+                            BuscarRecetaScreen(
+                                onVolver = { navController.popBackStack() }
                             )
                         }
                     }
