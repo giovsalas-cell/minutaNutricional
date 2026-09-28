@@ -11,4 +11,5 @@ object Rutas {
     const val FORGOT_PASSWORD = "forgot_password"
     const val MINUTA = "minuta"
     const val BUSCAR_RECETA = "buscar_receta"
+    const val ADMIN_RECETAS = "admin_recetas"
 }

@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 fun MinutaScreen(
     onLogout: () -> Unit,
     onBuscarReceta: () -> Unit,
+    onAdminRecetas: () -> Unit,
     usuarioActual: Usuario? = null
 ) {
     var recetas by remember { mutableStateOf<List<Receta>>(emptyList()) }
@@ -269,9 +270,8 @@ fun MinutaScreen(
         }
 
         item {
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = onBuscarReceta, modifier = Modifier.fillMaxWidth()) {
-                Text("Buscar receta")
+            OutlinedButton(onClick = onAdminRecetas, modifier = Modifier.fillMaxWidth()) {
+                Text("Administrar recetas (CRUD)")
             }
         }
 

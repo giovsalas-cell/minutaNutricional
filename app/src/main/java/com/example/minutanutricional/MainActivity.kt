@@ -69,12 +69,20 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onBuscarReceta = {
                                     navController.navigate(Rutas.BUSCAR_RECETA)
+                                },
+                                onAdminRecetas = {
+                                    navController.navigate(Rutas.ADMIN_RECETAS)
                                 }
                             )
                         }
 
                         composable(Rutas.BUSCAR_RECETA) {
                             BuscarRecetaScreen(
+                                onVolver = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Rutas.ADMIN_RECETAS) {
+                            AdminRecetasScreen(
                                 onVolver = { navController.popBackStack() }
                             )
                         }
